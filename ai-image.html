@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI生成 - 中英文口译</title>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@600;700&family=Manrope:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4648d4; --secondary: #8127cf; --bg: #f8f9ff;
+            --card-bg: #ffffff; --text-main: #0b1c30; --text-sub: #464554;
+            --border: #c7c4d7; --error: #ba1a1a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* 导航栏复用 */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: var(--card-bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .logo { font-weight: 700; font-family: 'Epilogue', sans-serif; color: var(--primary); text-decoration: none; font-size: 20px;}
+        .nav-links { display: flex; gap: 24px; }
+        .nav-links a { text-decoration: none; color: var(--text-main); font-weight: 500;}
+        .nav-links a.active { color: var(--secondary); font-weight: 700;}
+        
+        /* 主体布局 */
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; flex-grow: 1; width: 100%; }
+        
+        /* 标题区 */
+        .header-area { text-align: center; margin-bottom: 40px; }
+        .chip { display: inline-block; padding: 4px 16px; border: 1px solid var(--secondary); color: var(--secondary); border-radius: 20px; font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+        h1 { font-family: 'Epilogue', sans-serif; font-size: 36px; margin-bottom: 8px; }
+        .subtitle { color: var(--text-sub); }
+
+        /* 输入卡片 */
+        .input-card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 48px; border: 1px solid var(--border); }
+        .draft-notice { font-size: 13px; color: var(--primary); margin-bottom: 8px; display: none; justify-content: space-between; background: #edefff; padding: 8px 12px; border-radius: 8px;}
+        .draft-notice span.clear-btn { cursor: pointer; text-decoration: underline; }
+        textarea { width: 100%; min-height: 140px; border: none; outline: none; resize: vertical; font-size: 16px; font-family: inherit; line-height: 1.5; color: var(--text-main); background: transparent; }
+        textarea::placeholder { color: #9aa0a6; }
+        .char-count { text-align: right; font-size: 13px; color: var(--text-sub); margin-top: 8px; }
+        .char-count.over { color: var(--error); }
+        
+        /* 控制区 */
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 16px; }
+        .ratios { display: flex; gap: 8px; }
+        .ratio-btn { padding: 8px 16px; border: 1px solid var(--border); background: transparent; border-radius: 8px; cursor: pointer; font-weight: 500; color: var(--text-sub); transition: 0.2s; }
+        .ratio-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .ratio-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .actions { display: flex; gap: 12px; }
+        .btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit; border: none; transition: 0.2s; }
+        .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-cancel:hover { background: #f1f3f4; }
+        .btn-generate { background: linear-gradient(90deg, var(--primary), var(--secondary)); color: white; }
+        .btn-generate:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 生成中状态 */
+        .generating-ui { display: none; align-items: center; gap: 12px; color: var(--secondary); font-weight: 600; }
+        .spinner { width: 20px; height: 20px; border: 3px solid rgba(129, 39, 207, 0.2); border-top-color: var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 结果区 */
+        .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .clear-all { color: var(--text-sub); cursor: pointer; font-size: 14px; }
+        .clear-all:hover { color: var(--error); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+        
+        .image-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; }
+        .image-card img { width: 100%; height: auto; display: block; background: #e0e0e0; }
+        .image-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; gap: 16px; opacity: 0; transition: 0.2s; }
+        .image-card:hover .image-overlay { opacity: 1; }
+        .icon-action { color: white; background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .icon-action:hover { background: var(--primary); }
+        
+        .image-info { padding: 12px; font-size: 12px; color: var(--text-sub); }
+        .image-prompt { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); font-weight: 500; }
+
+        /* 骨架屏 */
+        .skeleton { width: 100%; aspect-ratio: 1; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; display: none; align-items: center; justify-content: center; color: var(--text-sub); font-size: 14px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Toast */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .toast { padding: 12px 24px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; }
+        .toast.info { background: var(--primary); }
+        .toast.success { background: #2e7d32; }
+        .toast.error { background: var(--error); }
+        .toast .close { cursor: pointer; margin-left: 16px; font-weight: bold; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        @media (max-width: 768px) {
+            .controls { flex-direction: column; align-items: flex-start; }
+            .actions { width: 100%; justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo" data-zh="中英文口译" data-en="Interpretation">中英文口译</a>
+        <div class="nav-links">
+            <a href="whiteboard.html" data-zh="绘图空间" data-en="Drawing Space">绘图空间</a>
+            <a href="ai-image.html" class="active" data-zh="AI生成" data-en="AI Generation">AI生成</a>
+            <button id="langToggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--text-main);">
+                <span class="material-symbols-outlined" style="vertical-align: middle;">translate</span> 
+                <span id="langText">中/EN</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-area">
+            <div class="chip" data-zh="AI 图像生成" data-en="AI Image Generation">AI 图像生成</div>
+            <h1 data-zh="用语言，生成图像" data-en="Visualize Your Words">用语言，生成图像</h1>
+            <div class="subtitle" data-zh="输入描述，即刻生成。" data-en="Enter a prompt, generate instantly.">输入描述，即刻生成。</div>
+        </div>
+
+        <div class="input-card">
+            <div class="draft-notice" id="draftNotice">
+                <span data-zh="↩ 已恢复上次未完成的内容" data-en="↩ Restored unsaved draft">↩ 已恢复上次未完成的内容</span>
+                <span class="clear-btn" id="clearDraftBtn" data-zh="清除" data-en="Clear">清除</span>
+            </div>
+            <textarea id="promptInput" data-zh="描述你想要生成的图像内容..." data-en="Describe the image you want to generate..." placeholder="描述你想要生成的图像内容..."></textarea>
+            <div class="char-count" id="charCount">0/500</div>
+            
+            <div class="controls">
+                <div class="ratios" id="ratioGroup">
+                    <button class="ratio-btn active" data-ratio="1:1" data-w="512" data-h="512">1:1</button>
+                    <button class="ratio-btn" data-ratio="4:3" data-w="640" data-h="480">4:3</button>
+                    <button class="ratio-btn" data-ratio="16:9" data-w="640" data-h="360">16:9</button>
+                    <button class="ratio-btn" data-ratio="9:16" data-w="360" data-h="640">9:16</button>
+                </div>
+                
+                <div class="actions" id="actionGroup">
+                    <button class="btn btn-cancel" id="btnCancel" data-zh="清空" data-en="Clear">清空</button>
+                    <button class="btn btn-generate" id="btnGenerate">
+                        <span class="material-symbols-outlined">auto_awesome</span>
+                        <span data-zh="生成" data-en="Generate">生成</span>
+                    </button>
+                </div>
+                
+                <div class="generating-ui" id="generatingUI">
+                    <div class="spinner"></div>
+                    <span data-zh="正在生成…" data-en="Generating…">正在生成…</span>
+                    <button class="btn btn-cancel" id="btnAbort" style="margin-left: auto;">
+                        <span class="material-symbols-outlined">close</span>
+                        <span data-zh="取消" data-en="Cancel">取消</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-area">
+            <div class="results-header">
+                <h3 data-zh="最近生成" data-en="Recent Generations">最近生成</h3>
+                <div class="clear-all" id="btnClearAll" data-zh="全部清除" data-en="Clear All">全部清除</div>
+            </div>
+            <div class="grid" id="imageGrid">
+                <div class="skeleton" id="skeletonCard">
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        <span class="material-symbols-outlined" style="margin-bottom:8px; animation: spin 2s linear infinite;">hourglass_empty</span>
+                        <span data-zh="AI 渲染中..." data-en="Rendering...">AI 渲染中...</span>
+                    </div>
+                </div>
+                </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastBox"></div>
+
+    <script>
+        // 1. 语言系统
+        let currentLang = localStorage.getItem('lang') || 'zh';
+        function applyLanguage() {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                if(el.tagName === 'TEXTAREA') {
+                    el.placeholder = el.getAttribute(`data-${currentLang}`);
+                } else {
+                    el.innerText = el.getAttribute(`data-${currentLang}`);
+                }
+            });
+            document.getElementById('langText').innerText = currentLang === 'zh' ? 'EN' : '中';
+        }
+        document.getElementById('langToggle').addEventListener('click', () => {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+        });
+        applyLanguage();
+
+        // 2. Toast 系统
+        function showToast(msgZh, msgEn, type = 'info') {
+            const msg = currentLang === 'zh' ? msgZh : msgEn;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${msg}</span><span class="close" onclick="this.parentElement.remove()">×</span>`;
+            document.getElementById('toastBox').appendChild(toast);
+            setTimeout(() => { if(toast.parentElement) toast.remove(); }, 3000);
+        }
+
+        // 3. UI 元素获取
+        const promptInput = document.getElementById('promptInput');
+        const charCount = document.getElementById('charCount');
+        const ratioBtns = document.querySelectorAll('.ratio-btn');
+        const btnCancel = document.getElementById('btnCancel');
+        const btnGenerate = document.getElementById('btnGenerate');
+        const actionGroup = document.getElementById('actionGroup');
+        const generatingUI = document.getElementById('generatingUI');
+        const btnAbort = document.getElementById('btnAbort');
+        const skeletonCard = document.getElementById('skeletonCard');
+        const imageGrid = document.getElementById('imageGrid');
+        const draftNotice = document.getElementById('draftNotice');
+
+        let selectedRatio = { ratio: '1:1', w: 512, h: 512 };
+        let abortController = null;
+        let isGenerating = false;
+
+        // 4. 输入框与草稿逻辑
+        const savedDraft = localStorage.getItem('ai_draft');
+        if (savedDraft) {
+            promptInput.value = savedDraft;
+            draftNotice.style.display = 'flex';
+            updateCharCount();
+        }
+
+        promptInput.addEventListener('input', () => {
+            updateCharCount();
+            localStorage.setItem('ai_draft', promptInput.value);
+        });
+
+        document.getElementById('clearDraftBtn').addEventListener('click', () => {
+            promptInput.value = '';
+            localStorage.removeItem('ai_draft');
+            draftNotice.style.display = 'none';
+            updateCharCount();
+        });
+
+        function updateCharCount() {
+            const len = promptInput.value.length;
+            charCount.innerText = `${len}/500`;
+            if (len > 500) {
+                charCount.classList.add('over');
+                promptInput.value = promptInput.value.substring(0, 500); // 截断
+                charCount.innerText = `500/500`;
+            } else {
+                charCount.classList.remove('over');
+            }
+            btnGenerate.disabled = len === 0;
+        }
+        updateCharCount();
+
+        // 5. 比例选择
+        ratioBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if(isGenerating) return;
+                ratioBtns.forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                selectedRatio = {
+                    ratio: e.currentTarget.dataset.ratio,
+                    w: e.currentTarget.dataset.w,
+                    h: e.currentTarget.dataset.h
+                };
+            });
+        });
+
+        // 6. 清空按钮
+        btnCancel.addEventListener('click', () => {
+            promptInput.value = '';
+            localStorage.removeItem('ai_draft');
+            updateCharCount();
+        });
+
+        // 7. 核心生成逻辑 (Fetch API)
+        btnGenerate.addEventListener('click', async () => {
+            const promptText = promptInput.value.trim();
+            if(!promptText) return;
+
+            // 状态切换: 开启生成UI
+            isGenerating = true;
+            actionGroup.style.display = 'none';
+            generatingUI.style.display = 'flex';
+            promptInput.disabled = true;
+            ratioBtns.forEach(b => b.disabled = true);
+            skeletonCard.style.display = 'flex';
+            skeletonCard.style.aspectRatio = eval(selectedRatio.ratio.replace(':','/')); // 动态适配骨架屏比例
+            
+            // 提示词补全 (如果为中文，加后缀让AI更好理解)
+            let finalPrompt = promptText;
+            if (/[\u4e00-\u9fa5]/.test(promptText)) {
+                finalPrompt += ", detailed, high quality";
+            }
+
+            // --- API 预留口 ---
+            // 若后续你需要接入商业大模型 (如 OpenAI DALL-E 或 Midjourney API)，
+            // 请在此处替换 Fetch 请求，并在 headers 中传入你的 API KEY。
+            // 示例: headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
+            
+            // 当前使用 Pollinations 免费免 Key 接口
+            const seed = Math.floor(Math.random() * 1000000);
+            const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${selectedRatio.w}&height=${selectedRatio.h}&seed=${seed}&nologo=true&model=flux`;
+
+            abortController = new AbortController();
+
+            try {
+                // 请求图片 (使用 blob 以便本地转存和下载)
+                const response = await fetch(url, { signal: abortController.signal });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const blob = await response.blob();
+                const imgUrl = URL.createObjectURL(blob);
+                
+                // 生成成功，渲染卡片
+                renderCard(imgUrl, selectedRatio.ratio, promptText);
+                showToast('✓ 生成成功', '✓ Generation complete', 'success');
+                
+                // 成功后清空输入框
+                promptInput.value = '';
+                localStorage.removeItem('ai_draft');
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showToast('已取消生成', 'Generation cancelled', 'info');
+                } else {
+                    showToast('生成失败，请重试', 'Generation failed, try again', 'error');
+                }
+            } finally {
+                // 恢复 UI 状态
+                resetUI();
+            }
+        });
+
+        // 取消生成
+        btnAbort.addEventListener('click', () => {
+            if (abortController) {
+                abortController.abort();
+            }
+        });
+
+        function resetUI() {
+            isGenerating = false;
+            actionGroup.style.display = 'flex';
+            generatingUI.style.display = 'none';
+            promptInput.disabled = false;
+            ratioBtns.forEach(b => b.disabled = false);
+            skeletonCard.style.display = 'none';
+            updateCharCount();
+        }
+
+        // 8. 结果卡片渲染与操作
+        function renderCard(src, ratio, prompt) {
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const card = document.createElement('div');
+            card.className = 'image-card';
+            card.innerHTML = `
+                <img src="${src}" alt="AI Image" style="aspect-ratio: ${eval(ratio.replace(':','/'))}">
+                <div class="image-overlay">
+                    <div class="icon-action btn-down" title="下载"><span class="material-symbols-outlined">download</span></div>
+                    <div class="icon-action btn-del" title="删除"><span class="material-symbols-outlined">delete</span></div>
+                </div>
+                <div class="image-info">
+                    <div>${ratio} · ${dateStr}</div>
+                    <div class="image-prompt">${prompt}</div>
+                </div>
+            `;
+            
+            // 插入到骨架屏之后（即最新生成的排在前面）
+            skeletonCard.after(card);
+
+            // 绑定下载事件
+            card.querySelector('.btn-down').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = `ai_image_${dateStr.replace(/-/g,'')}_${Math.floor(Math.random()*1000)}.jpg`;
+                link.href = src;
+                link.click();
+                showToast('✓ 图片已保存', '✓ Image saved', 'success');
+            });
+
+            // 绑定删除事件
+            card.querySelector('.btn-del').addEventListener('click', () => {
+                const msg = currentLang === 'zh' ? '确认删除此图片吗？' : 'Delete this image?';
+                if(confirm(msg)) {
+                    card.remove();
+                }
+            });
+        }
+
+        // 清除所有
+        document.getElementById('btnClearAll').addEventListener('click', () => {
+            const msg = currentLang === 'zh' ? '确认清除所有生成记录吗？不可撤销。' : 'Clear all records? Cannot be undone.';
+            if(confirm(msg)) {
+                document.querySelectorAll('.image-card').forEach(c => c.remove());
+            }
+        });
+
+        // 9. 离开防阻断机制
+        window.addEventListener('beforeunload', (e) => {
+            if (isGenerating) {
+                e.preventDefault();
+                e.returnValue = ''; // 触发浏览器原生提示
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中英文口译 - Creative Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@600;700&family=Manrope:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4648d4; --secondary: #8127cf; --bg: #f8f9ff;
+            --card-bg: #ffffff; --text-main: #0b1c30; --text-sub: #464554;
+            --border: #c7c4d7;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Manrope', sans-serif; background-color: var(--bg); color: var(--text-main); line-height: 1.6; }
+        h1, h2 { font-family: 'Epilogue', sans-serif; }
+        a { text-decoration: none; color: inherit; }
+        
+        /* 顶部导航 */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 48px; background: var(--card-bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .logo { font-family: 'Epilogue', sans-serif; font-size: 24px; font-weight: 700; background: linear-gradient(90deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 32px; font-weight: 500; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-actions { display: flex; gap: 24px; align-items: center; }
+        .lang-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 600; color: var(--text-main); }
+        .lang-btn:hover { color: var(--primary); }
+        .icon-btn { cursor: pointer; color: var(--text-main); }
+        
+        /* 主视觉区 */
+        .hero { text-align: center; padding: 80px 24px 60px; }
+        .chip { display: inline-block; padding: 6px 16px; background: #edefff; color: var(--primary); border-radius: 20px; font-size: 14px; font-weight: 600; margin-bottom: 24px; letter-spacing: 1px; }
+        .hero h1 { font-size: 56px; margin-bottom: 24px; }
+        .hero h1 span { color: var(--secondary); }
+        .hero p { max-width: 800px; margin: 0 auto; font-size: 18px; color: var(--text-sub); }
+        
+        /* 功能卡片区 */
+        .features { display: flex; justify-content: center; gap: 32px; padding: 0 24px 80px; flex-wrap: wrap; }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 48px; width: 100%; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); transition: transform 0.3s ease; display: flex; flex-direction: column; }
+        .card:hover { transform: translateY(-5px); }
+        .card-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; margin-bottom: 32px; }
+        .card.ai .card-icon { background: var(--secondary); }
+        .card h2 { font-size: 28px; margin-bottom: 16px; }
+        .card p { color: var(--text-sub); margin-bottom: 40px; flex-grow: 1; }
+        .btn-primary, .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border-radius: 12px; font-weight: 600; transition: all 0.2s; align-self: flex-start; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: #3b3cbd; }
+        .btn-secondary { background: white; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-secondary:hover { background: #f0f1ff; }
+        
+        /* 底部版权 */
+        .footer { display: flex; justify-content: space-between; padding: 32px 48px; border-top: 1px solid var(--border); color: var(--text-sub); font-size: 14px; }
+        .footer-links { display: flex; gap: 24px; }
+        
+        @media (max-width: 768px) {
+            .navbar { padding: 16px 24px; }
+            .nav-links { display: none; }
+            .hero h1 { font-size: 40px; }
+            .features { flex-direction: column; align-items: center; }
+            .footer { flex-direction: column; gap: 16px; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo" data-zh="中英文口译" data-en="Interpretation">中英文口译</div>
+        <div class="nav-links">
+            <a href="whiteboard.html" data-zh="绘图空间" data-en="Drawing Space">绘图空间</a>
+            <a href="ai-image.html" data-zh="AI生成" data-en="AI Generation">AI生成</a>
+            <a href="#" onclick="showToast()" data-zh="云端画廊" data-en="Cloud Gallery">云端画廊</a>
+        </div>
+        <div class="nav-actions">
+            <button class="lang-btn" id="langToggle">
+                <span class="material-symbols-outlined">translate</span>
+                <span id="langText">中 / EN</span>
+            </button>
+            <span class="material-symbols-outlined icon-btn">account_circle</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="chip">CREATIVE HUB</div>
+        <h1><span data-zh="实现" data-en="Manifest">实现</span> <span style="background: linear-gradient(90deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;" data-zh="你的愿景" data-en="Your Vision">你的愿景</span></h1>
+        <p data-zh="选择你偏好的创作模式。进入一个为无限专注而设计的宁静环境，无论你选择亲手雕琢每一个细节，还是用人工智能编排创意。" data-en="Select your preferred mode of creation. Enter a serene environment designed for boundless focus, whether you craft every detail by hand or orchestrate ideas with artificial intelligence.">
+            选择你偏好的创作模式。进入一个为无限专注而设计的宁静环境，无论你选择亲手雕琢每一个细节，还是用人工智能编排创意。
+        </p>
+    </section>
+
+    <section class="features">
+        <div class="card">
+            <div class="card-icon"><span class="material-symbols-outlined" style="font-size: 32px;">brush</span></div>
+            <h2 data-zh="独立绘图空间" data-en="Independent Drawing Space">独立绘图空间</h2>
+            <p data-zh="一个高度响应、无干扰的画布，专为手动艺术创作而设计。在专注的环境中，完全掌控笔触、图层与构图。" data-en="A highly responsive, distraction-free canvas tailored for manual artistry. Retain absolute control over strokes, layers, and composition in an environment built for focus.">
+                一个高度响应、无干扰的画布，专为手动艺术创作而设计。在专注的环境中，完全掌控笔触、图层与构图。
+            </p>
+            <a href="whiteboard.html" class="btn-primary">
+                <span data-zh="进入工作区" data-en="Enter Workspace">进入工作区</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+        </div>
+        <div class="card ai">
+            <div class="card-icon"><span class="material-symbols-outlined" style="font-size: 32px;">auto_awesome</span></div>
+            <h2 data-zh="AI 图像生成空间" data-en="AI Image Generation Space">AI 图像生成空间</h2>
+            <p data-zh="瞬间将想法转化为视觉形式。利用先进的神经网络，通过提示词迭代，原型化空灵的概念，拓展你的创意边界。" data-en="Translate thought into visual form instantly. Utilize advanced neural networks to prototype ethereal concepts and expand your creative boundaries through prompt iteration.">
+                瞬间将想法转化为视觉形式。利用先进的神经网络，通过提示词迭代，原型化空灵的概念，拓展你的创意边界。
+            </p>
+            <a href="ai-image.html" class="btn-secondary">
+                <span data-zh="开始生成" data-en="Start Generating">开始生成</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div data-zh="© 2026. 专为无限专注而设计。" data-en="© 2026. Designed for Boundless Focus.">© 2026. 专为无限专注而设计。</div>
+    </footer>
+
+    <script>
+        // 全局语言切换核心逻辑
+        let currentLang = localStorage.getItem('lang') || 'zh';
+        
+        function applyLanguage() {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                el.innerText = el.getAttribute(`data-${currentLang}`);
+            });
+            document.getElementById('langText').innerText = currentLang === 'zh' ? '中 / EN' : 'EN / 中';
+        }
+
+        document.getElementById('langToggle').addEventListener('click', () => {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+        });
+
+        // 拦截未开发功能的占位提示
+        function showToast() {
+            alert(currentLang === 'zh' ? "功能开发中，敬请期待" : "Feature under development, stay tuned");
+        }
+
+        // 初始化
+        applyLanguage();
+    </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绘图空间 - 中英文口译</title>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@600;700&family=Manrope:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4648d4; --bg: #f8f9ff; --border: #c7c4d7;
+            --tool-bg: #ffffff; --text-main: #0b1c30;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Manrope', sans-serif; background: var(--bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* 导航复用 */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: var(--tool-bg); border-bottom: 1px solid var(--border); flex-shrink: 0;}
+        .logo { font-weight: 700; font-family: 'Epilogue', sans-serif; color: var(--primary); text-decoration: none; font-size: 20px;}
+        .nav-links { display: flex; gap: 24px; }
+        .nav-links a { text-decoration: none; color: var(--text-main); font-weight: 500;}
+        .nav-links a.active { color: var(--primary); font-weight: 700;}
+        
+        /* 工作区容器 */
+        .workspace { display: flex; flex-grow: 1; overflow: hidden; position: relative; }
+        
+        /* 左侧工具栏 */
+        .toolbar { width: 64px; background: var(--tool-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 8px; overflow-y: auto; z-index: 10;}
+        .tool-btn { width: 40px; height: 40px; border-radius: 8px; border: none; background: transparent; cursor: pointer; display: flex; justify-content: center; align-items: center; color: var(--text-main); transition: 0.2s; }
+        .tool-btn:hover { background: var(--bg); }
+        .tool-btn.active { background: #edefff; color: var(--primary); }
+        .divider { width: 40px; height: 1px; background: var(--border); margin: 8px 0; }
+        .color-picker { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; overflow: hidden; }
+        
+        /* 画布区域 */
+        .canvas-container { flex-grow: 1; position: relative; background: #e0e0e0; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        canvas { background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: crosshair; }
+        
+        /* 顶部属性条 */
+        .prop-bar { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: var(--tool-bg); padding: 8px 24px; border-radius: 30px; display: flex; gap: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10; align-items: center; font-size: 14px;}
+        .prop-item { display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { width: 100px; accent-color: var(--primary); }
+        
+        /* Toast 系统 */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .toast { padding: 12px 24px; border-radius: 8px; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; }
+        .toast.success { background: #2e7d32; }
+        .toast.info { background: var(--primary); }
+        .toast .close { cursor: pointer; margin-left: 16px; font-weight: bold; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo" data-zh="中英文口译" data-en="Interpretation">中英文口译</a>
+        <div class="nav-links">
+            <a href="whiteboard.html" class="active" data-zh="绘图空间" data-en="Drawing Space">绘图空间</a>
+            <a href="ai-image.html" data-zh="AI生成" data-en="AI Generation">AI生成</a>
+            <button id="langToggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--primary);">
+                <span class="material-symbols-outlined" style="vertical-align: middle;">translate</span> 
+                <span id="langText">中/EN</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        <div class="toolbar">
+            <button class="tool-btn active" data-tool="brush" title="画笔"><span class="material-symbols-outlined">brush</span></button>
+            <button class="tool-btn" data-tool="eraser" title="橡皮擦"><span class="material-symbols-outlined">format_color_reset</span></button>
+            <div class="divider"></div>
+            <input type="color" id="colorPicker" class="color-picker" value="#000000">
+            <div class="divider"></div>
+            <button class="tool-btn" id="btnUndo" title="撤销"><span class="material-symbols-outlined">undo</span></button>
+            <button class="tool-btn" id="btnClear" title="清空"><span class="material-symbols-outlined">delete_sweep</span></button>
+            <button class="tool-btn" id="btnDownload" title="下载"><span class="material-symbols-outlined">download</span></button>
+            <button class="tool-btn" id="btnSave" title="保存到画廊"><span class="material-symbols-outlined">save</span></button>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <div class="prop-bar">
+                <div class="prop-item">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">line_weight</span>
+                    <input type="range" id="lineWidth" min="1" max="50" value="5">
+                </div>
+            </div>
+            <canvas id="board"></canvas>
+        </div>
+    </div>
+    
+    <div class="toast-container" id="toastBox"></div>
+
+    <script>
+        // 1. 多语言系统
+        let currentLang = localStorage.getItem('lang') || 'zh';
+        function applyLanguage() {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                if(el.tagName === 'INPUT' && el.type === 'text') {
+                    el.placeholder = el.getAttribute(`data-${currentLang}`);
+                } else {
+                    el.innerText = el.getAttribute(`data-${currentLang}`);
+                }
+            });
+            document.getElementById('langText').innerText = currentLang === 'zh' ? 'EN' : '中';
+        }
+        document.getElementById('langToggle').addEventListener('click', () => {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+        });
+        applyLanguage();
+
+        // 2. Toast 提示系统
+        function showToast(msgZh, msgEn, type = 'info') {
+            const msg = currentLang === 'zh' ? msgZh : msgEn;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${msg}</span><span class="close" onclick="this.parentElement.remove()">×</span>`;
+            document.getElementById('toastBox').appendChild(toast);
+            setTimeout(() => { if(toast.parentElement) toast.remove(); }, 3000);
+        }
+
+        // 3. Canvas 底层绘图逻辑
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+        
+        let isDrawing = false;
+        let currentTool = 'brush';
+        let historyStack = [];
+        let hasUnsavedChanges = false;
+
+        // 初始化画布尺寸 (适应容器)
+        function resizeCanvas() {
+            let imgData = null;
+            if(canvas.width > 0 && canvas.height > 0) {
+                imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            }
+            canvas.width = container.clientWidth - 80;
+            canvas.height = container.clientHeight - 80;
+            
+            // 填充白色背景（防止透明下载黑底）
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if(imgData) ctx.putImageData(imgData, 0, 0);
+            saveState(); // 初始化首帧
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 状态保存 (撤销逻辑)
+        function saveState() {
+            if(historyStack.length >= 50) historyStack.shift();
+            historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            hasUnsavedChanges = true;
+        }
+
+        // 绘图事件监听
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            // 设置笔触属性
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = document.getElementById('lineWidth').value;
+            
+            if (currentTool === 'eraser') {
+                ctx.strokeStyle = '#ffffff'; // 橡皮擦即画白线
+            } else {
+                ctx.strokeStyle = document.getElementById('colorPicker').value;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        });
+
+        const stopDrawing = () => {
+            if(isDrawing) {
+                ctx.closePath();
+                isDrawing = false;
+                saveState();
+            }
+        };
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // 4. 工具栏交互
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                currentTool = e.currentTarget.dataset.tool;
+            });
+        });
+
+        document.getElementById('btnUndo').addEventListener('click', () => {
+            if(historyStack.length > 1) {
+                historyStack.pop(); // 弹出当前状态
+                ctx.putImageData(historyStack[historyStack.length - 1], 0, 0);
+            }
+        });
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            const confirmMsg = currentLang === 'zh' ? '确定清空画布吗？此操作不可撤销。' : 'Clear canvas? This cannot be undone.';
+            if(confirm(confirmMsg)) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                saveState();
+            }
+        });
+
+        // 5. 导出与存储模拟
+        document.getElementById('btnDownload').addEventListener('click', () => {
+            const link = document.createElement('a');
+            const date = new Date().toISOString().slice(0,10).replace(/-/g, '');
+            link.download = `whiteboard_${date}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.85);
+            link.click();
+            hasUnsavedChanges = false;
+            showToast('✓ 图片已保存到本地', '✓ Image saved successfully', 'success');
+        });
+
+        document.getElementById('btnSave').addEventListener('click', () => {
+            showToast('功能开发中，敬请期待', 'Feature under development, stay tuned', 'info');
+        });
+
+        // 6. 离开防丢失拦截
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges && historyStack.length > 1) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
